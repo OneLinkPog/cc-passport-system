@@ -57,7 +57,7 @@ addLogLine("Passport Log Server Active")
 while true do
     local _, msg = rednet.receive()
     if type(msg) == "table" and msg.player and msg.checkpoint and msg.time then
-        local logEntry = string.format("%s | %s → %s", msg.time, msg.player, msg.checkpoint)
+        local logEntry = string.format("%s | %s -> %s", msg.time, msg.player, msg.checkpoint)
         
         -- Append to logs.txt
         local f = fs.open(logFile, "a")
