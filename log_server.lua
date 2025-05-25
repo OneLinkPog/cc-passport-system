@@ -34,7 +34,8 @@ local function updateMonitor()
     monitor.clear()
     for i, line in ipairs(lastLogLines) do
         monitor.setCursorPos(1, i)
-        monitor.write(line:sub(1, 39))  -- Trim to 39 characters for small monitors
+        local w, _ = monitor.getSize()
+        monitor.write(line:sub(1, w))
     end
 end
 
