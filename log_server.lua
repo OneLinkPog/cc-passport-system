@@ -1,6 +1,7 @@
-local side = "left"  -- Side where modem is attached
-rednet.open(side)
+local modemSide = "left"  -- Change to whatever side the modem is on
+rednet.open(modemSide)
 
+-- Try to find a monitor
 local monitor = peripheral.find("monitor")
 if monitor then
     monitor.setTextScale(0.5)
@@ -8,9 +9,10 @@ end
 
 local logFile = "logs.txt"
 local lastSeenFile = "last_seen"
-local lastLogLines = {}  -- Holds recent log lines
-local maxLines = 10      -- Number of lines to display on monitor
+local lastLogLines = {}
+local maxLines = 10
 
+-- Load last seen data from file
 local function loadLastSeen()
     if not fs.exists(lastSeenFile) then return {} end
     local f = fs.open(lastSeenFile, "r")
@@ -19,22 +21,24 @@ local function loadLastSeen()
     return data or {}
 end
 
+-- Save last seen data to file
 local function saveLastSeen(data)
     local f = fs.open(lastSeenFile, "w")
     f.write(textutils.serialize(data))
     f.close()
 end
 
+-- Update the monitor with the latest lines
 local function updateMonitor()
     if not monitor then return end
     monitor.clear()
-    monitor.setCursorPos(1, 1)
     for i, line in ipairs(lastLogLines) do
         monitor.setCursorPos(1, i)
-        monitor.write(line:sub(1, 39))  -- Trim to fit width if needed
+        monitor.write(line:sub(1, 39))  -- Trim to 39 characters for small monitors
     end
 end
 
+-- Add a line to the log buffer and update display
 local function addLogLine(line)
     table.insert(lastLogLines, line)
     if #lastLogLines > maxLines then
@@ -43,18 +47,33 @@ local function addLogLine(line)
     updateMonitor()
 end
 
+-- Load saved player checkpoint data
 local lastSeen = loadLastSeen()
-addLogLine("Log server running...")
 
+-- Display startup message
+addLogLine("Passport Log Server Active")
+
+-- Main loop
 while true do
     local _, msg = rednet.receive()
     if type(msg) == "table" and msg.player and msg.checkpoint and msg.time then
-        local line = string.format("%s | %s -> %s", msg.time, msg.player, msg.checkpoint)
-        local f = fs.open(logFile, "a") f.writeLine(line) f.close()
-        lastSeen[msg.player] = { time = msg.time, checkpoint = msg.checkpoint }
+        local logEntry = string.format("%s | %s → %s", msg.time, msg.player, msg.checkpoint)
+        
+        -- Append to logs.txt
+        local f = fs.open(logFile, "a")
+        f.writeLine(logEntry)
+        f.close()
+
+        -- Update last seen
+        lastSeen[msg.player] = {
+            checkpoint = msg.checkpoint,
+            time = msg.time
+        }
         saveLastSeen(lastSeen)
-        addLogLine(line)
+
+        -- Update monitor
+        addLogLine(logEntry)
     else
-        addLogLine("Invalid message received.")
+        addLogLine("Invalid rednet message received.")
     end
 end
