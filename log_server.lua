@@ -56,25 +56,20 @@ addLogLine("Passport Log Server Active")
 
 -- Main loop
 while true do
-    local _, msg = rednet.receive()
-    if type(msg) == "table" and msg.player and msg.checkpoint and msg.time then
-        local logEntry = string.format("%s | %s -> %s", msg.time, msg.player, msg.checkpoint)
-        
-        -- Append to logs.txt
-        local f = fs.open(logFile, "a")
-        f.writeLine(logEntry)
-        f.close()
+  local id, msg = rednet.receive()
 
-        -- Update last seen
-        lastSeen[msg.player] = {
-            checkpoint = msg.checkpoint,
-            time = msg.time
-        }
-        saveLastSeen(lastSeen)
+  if type(msg) == "table" then
+    local player = msg.player
+    local checkpoint = msg.checkpoint
+    local time = msg.time
 
-        -- Update monitor
-        addLogLine(logEntry)
+    if type(player) == "string" and type(checkpoint) == "string" and type(time) == "string" then
+      print("Received log from", player, "->", checkpoint)
+      -- proceed with logging
     else
-        addLogLine("Invalid rednet message received.")
+      print("Received malformed table:", textutils.serialize(msg))
     end
+  else
+    print("Invalid rednet message received:", textutils.serialize(msg))
+  end
 end
