@@ -1,36 +1,55 @@
-local modemSide = "right"  -- Change if your modem is on a different side
-rednet.open(modemSide)
+local side = "left"  -- modem side
+local monitor = peripheral.find("monitor")
 
--- Table to store last checkpoint per player
-local lastCheckpoints = {}
+rednet.open(side)
 
-print("Log server started. Waiting for checkpoint updates...")
+local logFile = "logs.txt"
+local lastSeenFile = "last_seen"
+
+local function loadLastSeen()
+    if not fs.exists(lastSeenFile) then return {} end
+    local f = fs.open(lastSeenFile, "r")
+    local data = textutils.unserialize(f.readAll())
+    f.close()
+    return data or {}
+end
+
+local function saveLastSeen(data)
+    local f = fs.open(lastSeenFile, "w")
+    f.write(textutils.serialize(data))
+    f.close()
+end
+
+local function writeMonitor(line)
+    if monitor then
+        local h = monitor.getSize()
+        local old = {}
+        for i = 1, h - 1 do
+            monitor.setCursorPos(1, i)
+            old[i] = monitor.read() or ""
+        end
+        monitor.clear()
+        for i = 1, h - 1 do
+            monitor.setCursorPos(1, i)
+            monitor.write(old[i])
+        end
+        monitor.setCursorPos(1, h)
+        monitor.write(line)
+    end
+end
+
+local lastSeen = loadLastSeen()
+writeMonitor("Log server running...")
 
 while true do
-    local senderId, message, protocol = rednet.receive()
-
-    if type(message) == "table" and message.player and message.checkpoint and message.time then
-        -- Update last checkpoint info
-        lastCheckpoints[message.player] = {
-            checkpoint = message.checkpoint,
-            time = message.time
-        }
-        print(("Updated %s: %s at %s"):format(message.player, message.checkpoint, message.time))
-
-    elseif type(message) == "string" and message:sub(1,5) == "query" then
-        -- Query command format: query playerName
-        local _, _, playerName = message:find("^query%s+(%S+)")
-        if playerName then
-            local info = lastCheckpoints[playerName]
-            if info then
-                print(("Last checkpoint of %s: %s at %s"):format(playerName, info.checkpoint, info.time))
-            else
-                print("No record found for player: " .. playerName)
-            end
-        else
-            print("Usage: query <playerName>")
-        end
+    local _, msg = rednet.receive()
+    if type(msg) == "table" and msg.player and msg.checkpoint and msg.time then
+        local line = string.format("%s | %s entered %s", msg.time, msg.player, msg.checkpoint)
+        local f = fs.open(logFile, "a") f.writeLine(line) f.close()
+        lastSeen[msg.player] = { time = msg.time, checkpoint = msg.checkpoint }
+        saveLastSeen(lastSeen)
+        writeMonitor(line)
     else
-        print("Unknown message received.")
+        writeMonitor("Invalid message")
     end
 end
