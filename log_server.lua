@@ -56,7 +56,7 @@ addLogLine("Passport Log Server Active")
 
 -- Main loop
 while true do
-  local id, msg = rednet.receive()
+  local id, msg = rednet.receive("passport_log")
 
   if type(msg) == "table" then
     local player = msg.player
