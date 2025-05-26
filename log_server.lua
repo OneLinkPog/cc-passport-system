@@ -64,11 +64,22 @@ while true do
     local time = msg.time
 
     if type(player) == "string" and type(checkpoint) == "string" and type(time) == "string" then
-      print("Received log from", player, "->", checkpoint)
-      -- proceed with logging
-    else
-      print("Received malformed table:", textutils.serialize(msg))
-    end
+  print("Received log from", player, "->", checkpoint)
+
+  -- Update lastSeen table
+  lastSeen[player] = {
+    checkpoint = checkpoint,
+    time = time
+  }
+  saveLastSeen(lastSeen)
+
+  -- Add a log line to the monitor
+  local line = string.format("%s | %s -> %s", time, player, checkpoint)
+  addLogLine(line)
+
+else
+  print("Received malformed table:", textutils.serialize(msg))
+end
   else
     print("Invalid rednet message received:", textutils.serialize(msg))
   end
