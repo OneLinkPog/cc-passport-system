@@ -16,7 +16,7 @@ while true do
             checkpoint = checkpointName,
             time = now
         }
-        rednet.broadcast({player = playerName, checkpoint = checkpointName, time = currentTime}, "passport_log")
+        rednet.broadcast(data, "passport_log")
         print("Sent: " .. player .. " -> " .. checkpointName)
     end
     sleep(2)
