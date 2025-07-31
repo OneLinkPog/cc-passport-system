@@ -1,30 +1,38 @@
 local modem = peripheral.find("modem") or error("No modem attached")
-modem.open(100)
+modem.open(300)
 
--- Check if 'commands' API is available
 local canRunCommands = commands and type(commands.run) == "function"
 
 print("=== Passport Issuing Terminal ===")
 
 while true do
-  print("\nEnter player Minecraft username:")
-  local name = read()
+  print("Enter your Minecraft username:")
+  local username = read()
 
-  print("Enter nationality country code (e.g., BLIS):")
-  local country = read():upper()
+  print("Enter your passport code:")
+  local passportCode = read()
 
-  -- Request passport issuance from server
-  modem.transmit(300, 100, {action = "issue_passport", name = name, nationality = country})
+  -- Send request to get passport info from server
+  modem.transmit(100, 300, {action = "get_passport_info", code = passportCode})
 
-  print("Waiting for passport code from server...")
-  local event, side, channel, replyChannel, message = os.pullEvent("modem_message")
+  -- Wait for server response on channel 300
+  local event, side, channel, replyChannel, response = os.pullEvent("modem_message")
 
-  if message.status == "success" and message.code then
-    local passportCode = message.code
-    print("Passport issued! Code:", passportCode)
+  while channel ~= 300 do
+    event, side, channel, replyChannel, response = os.pullEvent("modem_message")
+  end
+
+  if response.status ~= "success" then
+    print("Passport code not found.")
+  elseif response.info.name ~= username then
+    print("Passport code does not belong to username " .. username)
+  else
+    print("Passport verified! Welcome, " .. username)
+    local country = response.info.nationality
+    print("Nationality: " .. country)
 
     local giveCmd = ('give @p minecraft:written_book{title:"Passport",author:"Passport Office",pages:[\'{"text":"Name: %s\\nNationality: %s\\nPassport ID: %s"}\']} 1')
-      :format(name, country, passportCode)
+      :format(username, country, passportCode)
 
     if canRunCommands then
       print("Giving passport book to nearest player...")
@@ -35,9 +43,5 @@ while true do
       print("Run this command manually in server console or chat:")
       print(giveCmd)
     end
-
-  else
-    print("Failed to issue passport. Try again.")
   end
-
 end
