@@ -5,18 +5,18 @@ local detector = peripheral.find("playerDetector") or error("No player detector 
 local countryCode = "BLIS" -- Country this checkpoint is located in
 
 while true do
+
   print("Enter player name:")
   local name = read()
 
   print("Enter passport code:")
   local code = read()
 
-  -- Detect players nearby
-  local players = detector.getPlayers()
+  -- Detect players nearby within 1 block
+  local players = detector.getPlayersInRange(1)
   if #players == 0 then
     print("No player detected nearby. Please stand on the detector.")
   else
-    -- Check if entered name matches detected players
     local playerPresent = false
     for _, playerName in ipairs(players) do
       if playerName == name then
@@ -28,7 +28,7 @@ while true do
     if not playerPresent then
       print("The player '" .. name .. "' is not standing at the checkpoint.")
     else
-      -- First, get passport info and verify name
+      -- Get passport info and verify name matches
       modem.transmit(100, 300, {action = "get_passport_info", code = code})
       local _, _, _, _, response = os.pullEvent("modem_message")
 
@@ -43,6 +43,7 @@ while true do
           print("Welcome home, " .. name .. "!")
           print("Access Granted to " .. name)
         else
+          -- Check visa for non-citizens
           modem.transmit(100, 300, {action = "check_visa", code = code, target = countryCode})
           _, _, _, _, response = os.pullEvent("modem_message")
 
