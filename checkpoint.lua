@@ -31,9 +31,10 @@ while true do
       _, _, _, _, response = os.pullEvent("modem_message")
 
       if response.allowed then
+        print("Visa found! Thank you and have a nice visit.")
         print("Access Granted to " .. name)
       else
-        print("Access Denied. No visa for this country.")
+        print("Access Denied. No visa was found for this country.")
       end
     end
   end
