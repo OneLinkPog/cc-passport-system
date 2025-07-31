@@ -93,4 +93,9 @@ while true do
         end
     else
         print("Invalid passport.")
-        logAccess("unknown", use
+        logAccess("unknown", username, false)
+    end
+
+    sleep(2)
+    ::continue::
+end
