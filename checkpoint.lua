@@ -57,4 +57,7 @@ while true do
       end
     end
   end
+  sleep(2)
+  term.clear()
+  term.setCursorPos(1,1)
 end
