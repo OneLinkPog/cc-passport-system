@@ -1,142 +1,66 @@
 -- passport_server.lua
--- Place this on ONE central server with a modem
+local modem = peripheral.find("modem") or error("No modem attached")
+modem.open(100)
 
 local passports = {}
-local visaPermissions = {}
-local nationalityCounts = {}
+local visaPermissions = {} -- [passportCode] = { COUNTRY = true, ... }
+local countryCounts = {} -- [countryCode] = count
 
--- === Data Persistence ===
-local function saveData()
+local function save()
   local file = fs.open("passport_data", "w")
-  file.write(textutils.serialize({
-    passports = passports,
-    visaPermissions = visaPermissions,
-    nationalityCounts = nationalityCounts
-  }))
+  file.write(textutils.serialize({passports = passports, visaPermissions = visaPermissions, countryCounts = countryCounts}))
   file.close()
 end
 
-local function loadData()
+local function load()
   if fs.exists("passport_data") then
     local file = fs.open("passport_data", "r")
     local data = textutils.unserialize(file.readAll())
+    file.close()
     passports = data.passports or {}
     visaPermissions = data.visaPermissions or {}
-    nationalityCounts = data.nationalityCounts or {}
-    file.close()
+    countryCounts = data.countryCounts or {}
   end
 end
 
--- === Code Generation ===
-local function findCodeByName(name)
-  for code, data in pairs(passports) do
-    if data.name == name then return code end
-  end
-  return nil
-end
+load()
 
-local function generatePassportCode(nationalityCode)
-  nationalityCounts[nationalityCode] = (nationalityCounts[nationalityCode] or 0) + 1
-  return nationalityCode .. "-" .. tostring(nationalityCounts[nationalityCode])
-end
+while true do
+  local _, side, channel, replyChannel, message = os.pullEvent("modem_message")
 
--- === Command Handler ===
-local function handleMessage(senderID, message)
-  local cmd = message.cmd
-  local response = {}
-
-  if cmd == "register" then
+  if message.action == "issue_passport" then
+    local country = message.nationality
     local name = message.name
-    local nationalityCode = message.nationalityCode
-    local existing = findCodeByName(name)
 
-    if existing then
-      response = { status = "exists", code = existing }
-    else
-      local code = generatePassportCode(nationalityCode)
-      passports[code] = {
-        name = name,
-        nationality = nationalityCode
-      }
-      saveData()
-      response = { status = "ok", code = code }
-    end
+    if not countryCounts[country] then countryCounts[country] = 0 end
+    countryCounts[country] = countryCounts[country] + 1
 
-  elseif cmd == "get_passport" then
+    local passportCode = country .. "-" .. countryCounts[country]
+    passports[passportCode] = {name = name, nationality = country}
+    save()
+    modem.transmit(replyChannel, 100, {status = "success", code = passportCode})
+
+  elseif message.action == "get_passport_info" then
     local code = message.code
     local data = passports[code]
     if data then
-      response = {
-        status = "ok",
-        passport = {
-          name = data.name,
-          nationality = data.nationality,
-          code = code
-        }
-      }
+      modem.transmit(replyChannel, 100, {status = "success", info = data})
     else
-      response = { status = "not_found" }
+      modem.transmit(replyChannel, 100, {status = "error", error = "Not found"})
     end
 
-  elseif cmd == "check_visa" then
+  elseif message.action == "add_visa" then
     local code = message.code
-    local country = message.country
-    local allowed = visaPermissions[code]
-
-    if allowed then
-      for _, c in ipairs(allowed) do
-        if c == country then
-          response = { status = "allowed" }
-          break
-        end
-      end
-    end
-    response = response.status and response or { status = "denied" }
-
-  elseif cmd == "grant_visa" then
-    local code = message.code
-    local country = message.country
+    local targetCountry = message.target
     visaPermissions[code] = visaPermissions[code] or {}
-    table.insert(visaPermissions[code], country)
-    saveData()
-    response = { status = "granted" }
+    visaPermissions[code][targetCountry] = true
+    save()
+    modem.transmit(replyChannel, 100, {status = "visa_added"})
 
-  elseif cmd == "list_visas" then
+  elseif message.action == "check_visa" then
     local code = message.code
-    response = { status = "ok", visas = visaPermissions[code] or {} }
-
-  else
-    response = { status = "error", message = "unknown command" }
-  end
-
-  rednet.send(senderID, response)
-end
-
--- === Main Loop ===
-local function start()
-  local modemSide = nil
-  for _, side in ipairs({"left", "right", "top", "bottom", "front", "back"}) do
-    if peripheral.getType(side) == "modem" then
-      modemSide = side
-      break
-    end
-  end
-
-  if not modemSide then
-    print("No modem found!")
-    return
-  end
-
-  rednet.open(modemSide)
-  loadData()
-  print("📡 Passport Server Online.")
-
-  while true do
-    local senderID, message = rednet.receive()
-    if type(message) == "table" and message.cmd then
-      handleMessage(senderID, message)
-    end
+    local targetCountry = message.target
+    local allowed = visaPermissions[code] and visaPermissions[code][targetCountry]
+    modem.transmit(replyChannel, 100, {status = "success", allowed = allowed == true})
   end
 end
-
-start()
