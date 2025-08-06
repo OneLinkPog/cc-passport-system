@@ -4,6 +4,7 @@ modem.open(300)
 local detector = peripheral.find("playerDetector") or error("No player detector attached")
 local redstoneSide = "right"  -- Change this to the side the barrier is connected to
 local countryCode = "BLIS" -- Country this checkpoint is located in
+local openTime = 2 -- Amount of time (in seconds) the redstone is activated for
 
 while true do
 
@@ -44,7 +45,7 @@ while true do
           print("Welcome home, " .. name .. "!")
           print("Access Granted to " .. name)
           redstone.setOutput(redstoneSide, true)
-          sleep(3)
+          sleep(openTime)
           redstone.setOutput(redstoneSide, false)
         else
           -- Check visa for non-citizens
@@ -55,7 +56,7 @@ while true do
             print("Visa found! Thank you and have a nice visit.")
             print("Access Granted to " .. name)
             redstone.setOutput(redstoneSide, true)
-            sleep(3)
+            sleep(openTime)
             redstone.setOutput(redstoneSide, false)
           else
             print("Access Denied. No visa was found for this country.")
