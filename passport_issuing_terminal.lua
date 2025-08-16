@@ -1,3 +1,6 @@
+-- This file is for giving players physical items for their passports
+-- It is unneccesary in most cases
+-- This code requires a command computer to run
 local modem = peripheral.find("modem") or error("No modem attached")
 modem.open(300)
 
