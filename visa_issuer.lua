@@ -13,7 +13,7 @@ while true do
   local _, _, _, _, response = os.pullEvent("modem_message")
 
   if response.status == "visa_added" then
-    print("Visa granted for", code, "in country", target)
+    print("Visa granted for", code, "in country", country)
   else
     print("Error")
   end
